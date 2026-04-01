@@ -79,6 +79,10 @@ def paginate(
         .limit(page_size)
     )
     return products
+# /health api endpoint to check if the service is running or not and return a simple status message. This can be used for monitoring and health checks.
+@router.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 # /convert
@@ -107,4 +111,6 @@ def convert_price(product_id: str):
         "ExchangeRateUSDtoEUR": eur_rate,
         "UnitPriceEUR": eur_price
     }
+    
+   
     
