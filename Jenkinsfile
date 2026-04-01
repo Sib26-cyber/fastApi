@@ -1,0 +1,83 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = 'products-api'
+        CONTAINER_NAME = 'products-api-container'
+        PORT = '8000'
+    }
+
+    stages {
+
+        stage('Checkout from GitHub') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                bat 'docker build -t %IMAGE_NAME% .'
+            }
+        }
+
+        stage('Run Container in Background') {
+            steps {
+                bat '''
+                docker rm -f %CONTAINER_NAME% 2>nul || exit /b 0
+                docker run -d --name %CONTAINER_NAME% -p %PORT%:%PORT% %IMAGE_NAME%
+                '''
+            }
+        }
+
+        stage('Wait for API to Start') {
+            steps {
+                bat '''
+                timeout /t 10
+                '''
+            }
+        }
+
+        stage('Run Postman Tests (Newman)') {
+            steps {
+                bat '''
+                newman run postman\\ProductsAPI.postman_collection.json               
+                --reporters cli
+                '''
+            }
+        }
+
+        stage('Generate README.txt') {
+            steps {
+                bat '''
+                echo Products API Endpoints > README.txt
+                echo ====================== >> README.txt
+                echo GET /getSingleProduct/{product_id} >> README.txt
+                echo GET /getAll >> README.txt
+                echo POST /addNew >> README.txt
+                echo DELETE /deleteOne/{product_id} >> README.txt
+                echo GET /startsWith/{letter} >> README.txt
+                echo GET /paginate?start_id=...^&end_id=...^&page=... >> README.txt
+                echo GET /convert/{product_id} >> README.txt
+                echo. >> README.txt
+                echo FastAPI Docs: http://localhost:8000/docs >> README.txt
+                '''
+            }
+        }
+
+        stage('Create ZIP File') {
+            steps {
+                bat '''
+                for /f %%i in ('powershell -Command "Get-Date -Format yyyy-MM-dd-HHmmss"') do set dt=%%i
+                powershell -Command "Compress-Archive -Path * -DestinationPath complete-%dt%.zip"
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            bat 'docker rm -f %CONTAINER_NAME% 2>nul || exit /b 0'
+        }
+    }
+}
