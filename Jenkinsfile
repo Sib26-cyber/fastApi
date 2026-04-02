@@ -80,14 +80,11 @@ pipeline {
         stage('Run Postman Tests (Newman)') {
             steps {
                 powershell '''
-                if (-not (Get-Command newman -ErrorAction SilentlyContinue)) {
-                    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-                        throw "Newman is not installed and npm is not available on this Jenkins agent. Install Node.js (includes npm), then rerun."
-                    }
-                    npm install -g newman
+                if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+                    throw "npm is not available on this Jenkins agent. Install Node.js (includes npm), then rerun."
                 }
 
-                newman run postman/ProductsAPI.postman_collection.json --reporters cli
+                npx --yes newman@6 run postman/ProductsAPI.postman_collection.json --reporters cli
                 '''
             }
         }
