@@ -31,7 +31,7 @@ def add_new(product: Product):
     if existing:
         raise HTTPException(status_code=400, detail="Product with this ID already exists")
 
-    collection.insert_one(product.dict())
+    collection.insert_one(product.model_dump())
     return {"message": "Product added successfully"}
 
 
