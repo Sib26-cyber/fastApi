@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    parameters {
+        password(name: 'MONGO_URI', defaultValue: '', description: 'MongoDB connection URI for container runtime')
+    }
+
     environment {
         IMAGE_NAME = 'products-api'
         CONTAINER_NAME = 'products-api-container'
@@ -8,7 +12,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout from GitHub') {
             steps {
                 checkout scm
@@ -23,9 +26,13 @@ pipeline {
 
         stage('Run Container in Background') {
             steps {
-                bat '''
-                docker rm -f %CONTAINER_NAME% 2>nul || exit /b 0
-                docker run -d --name %CONTAINER_NAME% -p %PORT%:%PORT% %IMAGE_NAME%
+                powershell '''
+                if ([string]::IsNullOrWhiteSpace($env:MONGO_URI)) {
+                    throw "MONGO_URI parameter is empty. Provide your full MongoDB Atlas URI in Build with Parameters."
+                }
+
+                docker rm -f $env:CONTAINER_NAME 2>$null | Out-Null
+                docker run -d --name $env:CONTAINER_NAME -p "$env:PORT`:$env:PORT" -e "MONGO_URI=$env:MONGO_URI" $env:IMAGE_NAME
                 '''
             }
         }
@@ -34,6 +41,14 @@ pipeline {
             steps {
                 bat '''
                 timeout /t 10
+                '''
+            }
+        }
+
+        stage('Run Python Unit Tests') {
+            steps {
+                bat '''
+                docker exec %CONTAINER_NAME% python3 -m unittest discover -s tests -p "test_*.py"
                 '''
             }
         }
@@ -59,6 +74,9 @@ pipeline {
                 echo GET /startsWith/{letter} >> README.txt
                 echo GET /paginate?start_id=...^&end_id=...^&page=... >> README.txt
                 echo GET /convert/{product_id} >> README.txt
+                echo GET /health >> README.txt
+                echo GET /metrics >> README.txt
+                echo GET / >> README.txt
                 echo. >> README.txt
                 echo FastAPI Docs: http://localhost:8000/docs >> README.txt
                 '''
