@@ -44,6 +44,15 @@ pipeline {
                 $ready = $false
                 for ($i = 1; $i -le $retries; $i++) {
                     Start-Sleep -Seconds 2
+
+                    # Ensure the specific pipeline container is still running.
+                    $isRunning = (docker inspect -f "{{.State.Running}}" $env:CONTAINER_NAME 2>$null)
+                    if ($isRunning -ne "true") {
+                        Write-Host "Container is not running. Recent logs:"
+                        docker logs $env:CONTAINER_NAME
+                        throw "Container stopped before API became ready"
+                    }
+
                     try {
                         $r = Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing -TimeoutSec 3
                         if ($r.StatusCode -eq 200) { $ready = $true; break }
