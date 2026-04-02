@@ -9,6 +9,7 @@ pipeline {
         IMAGE_NAME = 'products-api'
         CONTAINER_NAME = 'products-api-container'
         PORT = '8000'
+        MONGO_URI = "${params.MONGO_URI}"
     }
 
     stages {
@@ -39,8 +40,22 @@ pipeline {
 
         stage('Wait for API to Start') {
             steps {
-                bat '''
-                timeout /t 10
+                powershell '''
+                $retries = 15
+                $ready = $false
+                for ($i = 1; $i -le $retries; $i++) {
+                    Start-Sleep -Seconds 2
+                    try {
+                        $r = Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing -TimeoutSec 3
+                        if ($r.StatusCode -eq 200) { $ready = $true; break }
+                    } catch {}
+                    Write-Host "Waiting for API... attempt $i/$retries"
+                }
+                if (-not $ready) {
+                    docker logs $env:CONTAINER_NAME
+                    throw "API did not start in time"
+                }
+                Write-Host "API is ready"
                 '''
             }
         }
