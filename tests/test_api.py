@@ -2,8 +2,16 @@ import os
 import unittest
 from unittest.mock import patch
 
-# Ensure app import does not fail in test environments without a host-level .env file.
-os.environ.setdefault("MONGO_URI", "mongodb://localhost:27017")
+import sys
+from unittest.mock import MagicMock, patch
+
+# Block real MongoDB connection before any app module is imported.
+# This prevents database.py from connecting to Atlas during test collection.
+os.environ["MONGO_URI"] = "mongodb://localhost:27017"
+_mock_collection = MagicMock()
+_mock_db_module = MagicMock()
+_mock_db_module.collection = _mock_collection
+sys.modules["app.database"] = _mock_db_module
 
 from fastapi.testclient import TestClient
 from app.main import app

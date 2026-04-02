@@ -9,7 +9,6 @@ pipeline {
         IMAGE_NAME = 'products-api'
         CONTAINER_NAME = 'products-api-container'
         PORT = '8000'
-        MONGO_URI = "${params.MONGO_URI}"
     }
 
     stages {
@@ -61,10 +60,11 @@ pipeline {
         }
 
         stage('Run Python Unit Tests') {
+            options {
+                timeout(time: 2, unit: 'MINUTES')
+            }
             steps {
-                bat '''
-                docker exec %CONTAINER_NAME% python3 -m unittest discover -s tests -p "test_*.py"
-                '''
+                bat 'docker exec %CONTAINER_NAME% python3 -m unittest discover -s tests -p "test_*.py" -v'
             }
         }
 
