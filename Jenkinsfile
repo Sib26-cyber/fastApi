@@ -79,9 +79,15 @@ pipeline {
 
         stage('Run Postman Tests (Newman)') {
             steps {
-                bat '''
-                newman run postman\\ProductsAPI.postman_collection.json               
-                --reporters cli
+                powershell '''
+                if (-not (Get-Command newman -ErrorAction SilentlyContinue)) {
+                    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+                        throw "Newman is not installed and npm is not available on this Jenkins agent. Install Node.js (includes npm), then rerun."
+                    }
+                    npm install -g newman
+                }
+
+                newman run postman/ProductsAPI.postman_collection.json --reporters cli
                 '''
             }
         }
